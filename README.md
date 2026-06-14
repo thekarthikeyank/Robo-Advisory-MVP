@@ -1,147 +1,293 @@
-<p align="center">
-  <img src="assets/aham-banner.png" width="100%" alt="AHAM Banner"/>
-</p>
+<div align="center">
 
-<h1 align="center">
-AHAM
-</h1>
+# 🚀 AHAM
+### Adaptive Hybrid Asset Allocation Model
 
-<p align="center">
-Adaptive Hybrid Asset Allocation Model
-</p>
+### AI-Powered Investor Risk Profiling & Portfolio Recommendation Platform
 
-<p align="center">
-AI-Powered Investor Risk Profiling & Portfolio Allocation Platform
-</p>
-
-<p align="center">
-
-![React](https://img.shields.io/badge/React-18-blue)
-![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow)
-![n8n](https://img.shields.io/badge/n8n-Automation-orange)
-![Google Sheets](https://img.shields.io/badge/Google_Sheets-Database-green)
-![Vercel](https://img.shields.io/badge/Vercel-Deployment-black)
-![Fintech](https://img.shields.io/badge/Domain-Fintech-gold)
-
-</p>
+[🌐 Live Demo](https://karthikeyank-adivisory.vercel.app/)
 
 ---
 
-## Executive Summary
+![React](https://img.shields.io/badge/Frontend-React-blue)
+![JavaScript](https://img.shields.io/badge/Language-JavaScript-yellow)
+![n8n](https://img.shields.io/badge/Automation-n8n-orange)
+![Google Sheets](https://img.shields.io/badge/Database-Google%20Sheets-green)
+![Vercel](https://img.shields.io/badge/Deployment-Vercel-black)
+![Finance](https://img.shields.io/badge/Domain-Wealth%20Management-gold)
 
-AHAM (Adaptive Hybrid Asset Allocation Model) is an AI-powered robo-advisory platform that automates investor onboarding, behavioral risk assessment, portfolio allocation, investment projections, and client reporting.
-
-The platform combines Finance, Business Analytics, Automation, and AI to provide personalized portfolio recommendations based on investor risk tolerance, investment goals, wealth allocation, investment horizon, and return expectations.
-
----
-
-## Product Preview
-
-### Investor Risk Assessment
-
-![Questionnaire](assets/questionnaire.png)
-
-### Portfolio Dashboard
-
-![Dashboard](assets/dashboard.png)
-
-### Automated Portfolio Report
-
-![Email Report](assets/email-report.png)
+</div>
 
 ---
 
-## Architecture
+# 📖 Executive Summary
+
+AHAM (Adaptive Hybrid Asset Allocation Model) is an AI-powered fintech platform designed to automate investor onboarding, risk assessment, portfolio allocation, investment projection, and reporting.
+
+The system bridges the gap between traditional financial advisory services and modern digital wealth management by using behavioral finance principles, automated workflows, and portfolio analytics to generate personalized investment recommendations.
+
+The platform was developed to demonstrate how financial institutions, wealth managers, robo-advisors, and fintech firms can automate investment advisory processes while maintaining personalized client experiences.
+
+---
+
+# 🎯 Problem Statement
+
+Traditional investment advisory processes are often:
+
+- Time-consuming
+- Dependent on manual questionnaires
+- Difficult to scale
+- Inconsistent across advisors
+- Expensive for retail investors
+
+Many investors receive generic investment recommendations that do not accurately reflect their financial goals, risk tolerance, or investment horizon.
+
+AHAM addresses these challenges through an automated risk profiling and portfolio recommendation engine.
+
+---
+
+# 🌐 Live Application
+
+### Application Link
+
+👉 https://karthikeyank-adivisory.vercel.app/
+
+The application allows investors to:
+
+- Complete a behavioral risk assessment
+- Receive a personalized risk profile
+- View recommended portfolio allocations
+- Analyze projected investment outcomes
+- Generate automated portfolio reports
+
+---
+
+# 🏗 System Architecture
 
 ```text
 Investor
-   │
-   ▼
+    │
+    ▼
 Risk Profiling Questionnaire
-   │
-   ▼
+    │
+    ▼
 Risk Scoring Engine
-   │
-   ▼
+    │
+    ▼
 Portfolio Allocation Model
-   │
-   ▼
+    │
+    ▼
 Investment Projection Engine
-   │
-   ▼
+    │
+    ▼
 Dashboard Generation
-   │
-   ▼
-Email Automation
-   │
-   ▼
-Investor Report
+    │
+    ▼
+Automated Report Generation
+    │
+    ▼
+Investor Recommendation Report
 ```
 
 ---
 
-## Core Features
+# ⚙️ Core Features
 
-✅ Investor Risk Profiling
+## 1. Investor Risk Profiling
 
-✅ Automated Risk Scoring
+Behavioral-finance-based questionnaire that evaluates:
 
-✅ Portfolio Allocation Engine
-
-✅ Investment Projection Dashboard
-
-✅ Automated Email Reporting
-
-✅ Workflow Automation using n8n
-
-✅ Google Sheets Integration
-
-✅ React Frontend Application
-
-✅ Wealth Management Analytics
+- Investment Horizon
+- Income Stability
+- Wealth Allocation
+- Market Risk Reaction
+- Investment Experience
+- Investment Goals
+- Return Expectations
 
 ---
 
-## Tech Stack
+## 2. Automated Risk Scoring
 
-| Layer | Technology |
-|---------|------------|
+The platform automatically assigns investors into:
+
+### Conservative
+
+Focus:
+- Capital Preservation
+- Lower Volatility
+- Stable Growth
+
+### Moderate
+
+Focus:
+- Balanced Growth
+- Diversified Allocation
+- Moderate Risk
+
+### Aggressive
+
+Focus:
+- Wealth Creation
+- High Equity Exposure
+- Long-Term Capital Appreciation
+
+---
+
+## 3. Portfolio Allocation Engine
+
+The model dynamically allocates assets across:
+
+- NIFTY 50
+- Corporate Bonds
+- Gold ETFs
+- Realty Sector Exposure
+- Small Cap Exposure
+- NASDAQ 100 Exposure
+
+This creates diversified portfolios aligned with investor risk profiles.
+
+---
+
+## 4. Investment Projection Module
+
+The platform estimates:
+
+- Expected Portfolio Value
+- Best Case Scenario
+- Base Case Scenario
+- Worst Case Scenario
+
+Using CAGR-based portfolio growth assumptions.
+
+---
+
+## 5. Interactive Dashboard
+
+Dashboard features include:
+
+- Risk Score Visualization
+- Portfolio Allocation Breakdown
+- Investment Growth Forecasts
+- Portfolio Analytics
+- Asset Allocation Charts
+
+---
+
+## 6. Automated Reporting
+
+The system automatically generates:
+
+- Portfolio Recommendation Reports
+- Risk Assessment Summaries
+- Investment Projection Reports
+- Client Advisory Emails
+
+---
+
+# 🤖 Workflow Automation
+
+AHAM incorporates workflow automation using n8n.
+
+Automation Capabilities:
+
+- Investor Data Collection
+- Risk Score Processing
+- Portfolio Recommendation Generation
+- Dashboard Updates
+- Email Report Distribution
+
+This enables scalable investor onboarding with minimal manual intervention.
+
+---
+
+# 💻 Technology Stack
+
+| Category | Technology |
+|-----------|------------|
 | Frontend | React.js |
 | Build Tool | Vite |
 | Automation | n8n |
 | Database | Google Sheets |
 | Reporting | HTML Email Templates |
-| Charts | QuickChart |
+| Visualization | QuickChart |
 | Deployment | Vercel |
 | Language | JavaScript |
 
 ---
 
-## Business Impact
+# 📊 Business Impact
 
-- Reduced manual advisory effort
-- Standardized investor assessment
-- Faster client onboarding
-- Automated reporting workflow
-- Scalable fintech infrastructure
+The platform demonstrates how financial institutions can:
+
+- Reduce manual advisory effort
+- Improve onboarding efficiency
+- Standardize risk assessment
+- Deliver personalized recommendations
+- Scale wealth management operations
 
 ---
 
-## Future Roadmap
+# 🔮 Future Enhancements
 
-- Real-Time Market Data
-- AI Portfolio Rebalancing
+Planned enhancements include:
+
+- Live Market Data Integration
+- AI-Based Portfolio Rebalancing
 - Mutual Fund Recommendation Engine
+- Tax Optimization Module
 - Mobile Application
 - Predictive Analytics
-- Advanced Wealth Management Features
+- Advanced Wealth Management Dashboard
 
 ---
 
-## Author
+# 🎓 Skills Demonstrated
 
-Karthikeyan K
+### Finance
 
-MBA Finance & Business Analytics
+- Portfolio Management
+- Asset Allocation
+- Wealth Management
+- Risk Profiling
+- Investment Analysis
 
-Founder — Fintrust Global
+### Business Analytics
+
+- Data Processing
+- Decision Modelling
+- KPI Monitoring
+- Dashboard Design
+
+### Technology
+
+- React Development
+- JavaScript
+- Workflow Automation
+- Fintech Product Design
+- AI-Assisted Advisory Systems
+
+---
+
+# 👨‍💼 About The Creator
+
+**Karthikeyan K**
+
+MBA – Finance & Business Analytics
+
+Founder, Fintrust Global
+
+Interests:
+- Investment Banking
+- Wealth Management
+- Fintech
+- Portfolio Analytics
+- AI Applications in Finance
+
+---
+
+# ⚠ Disclaimer
+
+This project is developed for educational, research, and fintech innovation purposes.
+
+Portfolio allocations, expected returns, and investment projections are illustrative and should not be interpreted as financial advice.
