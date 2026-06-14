@@ -1,188 +1,147 @@
-# AHAM – Adaptive Hybrid Asset Allocation Model
+<p align="center">
+  <img src="assets/aham-banner.png" width="100%" alt="AHAM Banner"/>
+</p>
 
-## Overview
+<h1 align="center">
+AHAM
+</h1>
 
-AHAM (Adaptive Hybrid Asset Allocation Model) is an AI-powered robo-advisory platform designed to automate investor risk profiling, portfolio allocation, onboarding, and reporting.
+<p align="center">
+Adaptive Hybrid Asset Allocation Model
+</p>
 
-The system evaluates investor behavior, financial goals, investment horizon, risk tolerance, and return expectations to generate personalized portfolio recommendations and investment projections.
+<p align="center">
+AI-Powered Investor Risk Profiling & Portfolio Allocation Platform
+</p>
 
-This project combines Finance, Business Analytics, Automation, and AI to create a scalable digital investment advisory solution.
+<p align="center">
+
+![React](https://img.shields.io/badge/React-18-blue)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-yellow)
+![n8n](https://img.shields.io/badge/n8n-Automation-orange)
+![Google Sheets](https://img.shields.io/badge/Google_Sheets-Database-green)
+![Vercel](https://img.shields.io/badge/Vercel-Deployment-black)
+![Fintech](https://img.shields.io/badge/Domain-Fintech-gold)
+
+</p>
 
 ---
 
 ## Executive Summary
 
-Investment advisory services often rely on manual questionnaires, subjective risk assessments, and generic portfolio recommendations.
+AHAM (Adaptive Hybrid Asset Allocation Model) is an AI-powered robo-advisory platform that automates investor onboarding, behavioral risk assessment, portfolio allocation, investment projections, and client reporting.
 
-AHAM solves this problem by creating an automated workflow that:
-
-- Collects investor information
-- Calculates risk scores
-- Classifies investors into risk categories
-- Generates portfolio allocations
-- Creates investment projections
-- Delivers personalized reports automatically
-
-The platform demonstrates how modern fintech solutions can improve efficiency, consistency, and scalability in wealth management.
+The platform combines Finance, Business Analytics, Automation, and AI to provide personalized portfolio recommendations based on investor risk tolerance, investment goals, wealth allocation, investment horizon, and return expectations.
 
 ---
 
-## Key Features
+## Product Preview
 
-### Investor Risk Profiling
-- Behavioral finance-based questionnaire
-- Multi-factor risk assessment
-- Automated scoring model
+### Investor Risk Assessment
 
-### Portfolio Allocation Engine
-- Conservative Portfolio
-- Moderate Portfolio
-- Aggressive Portfolio
+![Questionnaire](assets/questionnaire.png)
 
-### Investment Projection Module
-- CAGR-based forecasting
-- Best-case projections
-- Expected-case projections
-- Worst-case projections
+### Portfolio Dashboard
 
-### Interactive Dashboard
-- Portfolio visualization
-- Risk score display
-- Asset allocation charts
-- Investment growth projections
+![Dashboard](assets/dashboard.png)
 
-### Workflow Automation
-- Automated onboarding
-- Google Sheets integration
-- Email report generation
-- Portfolio recommendation delivery
+### Automated Portfolio Report
 
-### AI-Powered Advisory Framework
-- Personalized recommendations
-- Goal-oriented portfolio construction
-- Automated investor insights
+![Email Report](assets/email-report.png)
 
 ---
 
-## Technology Stack
-
-| Category | Technology |
-|-----------|------------|
-| Frontend | React.js |
-| Build Tool | Vite |
-| Workflow Automation | n8n |
-| Data Storage | Google Sheets |
-| Reporting | HTML Email Templates |
-| Visualization | QuickChart |
-| Deployment | Vercel |
-| Programming Language | JavaScript |
-
----
-
-## System Workflow
+## Architecture
 
 ```text
-Investor Questionnaire
-          ↓
-Risk Assessment Engine
-          ↓
-Risk Score Calculation
-          ↓
+Investor
+   │
+   ▼
+Risk Profiling Questionnaire
+   │
+   ▼
+Risk Scoring Engine
+   │
+   ▼
 Portfolio Allocation Model
-          ↓
+   │
+   ▼
 Investment Projection Engine
-          ↓
+   │
+   ▼
 Dashboard Generation
-          ↓
-Automated Email Report
+   │
+   ▼
+Email Automation
+   │
+   ▼
+Investor Report
 ```
 
 ---
 
-## Risk Classification Framework
+## Core Features
 
-### Conservative Investor
-- Capital preservation focus
-- Lower volatility
-- Stable long-term growth
+✅ Investor Risk Profiling
 
-### Moderate Investor
-- Balanced risk and return
-- Diversified allocation strategy
-- Medium volatility
+✅ Automated Risk Scoring
 
-### Aggressive Investor
-- Maximum wealth creation
-- Higher equity exposure
-- Higher return potential
+✅ Portfolio Allocation Engine
 
----
+✅ Investment Projection Dashboard
 
-## Portfolio Components
+✅ Automated Email Reporting
 
-The model uses a diversified allocation approach including:
+✅ Workflow Automation using n8n
 
-- NIFTY 50
-- Corporate Bonds
-- Gold ETFs
-- Realty Exposure
-- Small-Cap Exposure
-- NASDAQ-100 Exposure
+✅ Google Sheets Integration
+
+✅ React Frontend Application
+
+✅ Wealth Management Analytics
 
 ---
 
-## Business Value
+## Tech Stack
 
-### For Investors
-- Personalized recommendations
-- Structured portfolio allocation
-- Clear risk assessment
-
-### For Financial Advisors
-- Reduced manual effort
-- Faster onboarding
-- Standardized risk profiling
-- Scalable advisory process
-
----
-
-## Future Enhancements
-
-- Real-time market data integration
-- AI-based portfolio rebalancing
-- Mutual fund recommendation engine
-- Tax optimization module
-- Mobile application
-- Machine learning prediction models
-- Dynamic portfolio monitoring
+| Layer | Technology |
+|---------|------------|
+| Frontend | React.js |
+| Build Tool | Vite |
+| Automation | n8n |
+| Database | Google Sheets |
+| Reporting | HTML Email Templates |
+| Charts | QuickChart |
+| Deployment | Vercel |
+| Language | JavaScript |
 
 ---
 
-## Skills Demonstrated
+## Business Impact
 
-- Investment Analysis
-- Portfolio Management
-- Wealth Management Concepts
-- Business Analytics
-- Financial Modeling
-- Workflow Automation
-- Fintech Product Development
-- React Development
-- Process Automation
-- AI Integration
+- Reduced manual advisory effort
+- Standardized investor assessment
+- Faster client onboarding
+- Automated reporting workflow
+- Scalable fintech infrastructure
+
+---
+
+## Future Roadmap
+
+- Real-Time Market Data
+- AI Portfolio Rebalancing
+- Mutual Fund Recommendation Engine
+- Mobile Application
+- Predictive Analytics
+- Advanced Wealth Management Features
 
 ---
 
 ## Author
 
-**Karthikeyan K**
+Karthikeyan K
 
-MBA – Finance & Business Analytics
+MBA Finance & Business Analytics
 
-Founder, Fintrust Global
-
----
-
-## Disclaimer
-
-This project is developed for educational, research, and fintech innovation purposes. Portfolio allocations and return projections are illustrative and should not be considered investment advice.
+Founder — Fintrust Global
