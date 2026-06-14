@@ -1,0 +1,127 @@
+{
+  "name": "AHAM MVP v2 - Risk Profiling + Dashboard",
+  "nodes": [
+    {
+      "parameters": {
+        "sheetId": "YOUR_SPREADSHEET_ID",
+        "range": "Form Responses 1!A:Z",
+        "watchFor": "new"
+      },
+      "name": "Google Sheets Trigger",
+      "type": "n8n-nodes-base.googleSheetsTrigger",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            { "name": "clientName", "value": "={{$json[\"Name\"]}}" },
+            { "name": "clientEmail", "value": "={{$json[\"Email\"]}}" },
+            { "name": "investmentHorizon", "value": "={{$json[\"Investment Horizon\"]}}" },
+            { "name": "incomeStability", "value": "={{$json[\"Income Stability\"]}}" },
+            { "name": "wealthPortion", "value": "={{$json[\"Wealth Allocation\"]}}" },
+            { "name": "riskReaction", "value": "={{$json[\"Risk Reaction\"]}}" },
+            { "name": "experience", "value": "={{$json[\"Experience\"]}}" },
+            { "name": "goal", "value": "={{$json[\"Investment Goal\"]}}" },
+            { "name": "returnExpectation", "value": "={{$json[\"Return Expectation\"]}}" },
+            { "name": "targetYears", "value": "={{Number($json[\"Target Years\"] || 10)}}" }
+          ]
+        }
+      },
+      "name": "Map Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const d = items[0].json;\n\nfunction score(val){ if(!val) return 2; val = val.toString().toLowerCase(); if(val.includes('low')||val.includes('short')||val.includes('beginner')||val.includes('exit')) return 1; if(val.includes('medium')||val.includes('moderate')||val.includes('balanced')) return 2; return 3; }\n\nconst total = score(d.investmentHorizon) + score(d.incomeStability) + score(d.wealthPortion) + score(d.riskReaction) + score(d.experience) + score(d.goal) + score(d.returnExpectation);\n\nlet profile = 'Moderate';\nif(total <= 11) profile = 'Conservative';\nelse if(total >= 17) profile = 'Aggressive';\n\nreturn [{ json: { ...d, riskScore: total, riskProfile: profile } }];"
+      },
+      "name": "Risk Scoring",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const d = items[0].json;\n\nlet allocation;\nlet riskNumeric;\n\nswitch(d.riskProfile) {\n  case 'Conservative':\n    allocation = { equity: 30, debt: 60, gold: 10 };\n    riskNumeric = 1;\n    break;\n  case 'Moderate':\n    allocation = { equity: 50, debt: 40, gold: 10 };\n    riskNumeric = 2;\n    break;\n  case 'Aggressive':\n    allocation = { equity: 70, debt: 20, gold: 10 };\n    riskNumeric = 3;\n    break;\n}\n\nconst expectedReturn = allocation.equity*0.14/100 + allocation.debt*0.07/100 + allocation.gold*0.10/100;\nconst years = d.targetYears || 10;\nconst multiplier = Math.pow(1 + expectedReturn, years);\n\nreturn [{\n  json: {\n    clientName: d.clientName,\n    clientEmail: d.clientEmail,\n    riskScore: d.riskScore,\n    riskProfile: d.riskProfile,\n    riskNumeric,\n    equity: allocation.equity,\n    debt: allocation.debt,\n    gold: allocation.gold,\n    expectedReturn,\n    projectionMultiplier: multiplier,\n    submissionMonth: new Date().toISOString().slice(0,7)\n  }\n}];"
+      },
+      "name": "Allocation + Dashboard Formatter",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [950, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "sheetId": "YOUR_SPREADSHEET_ID",
+        "range": "Dashboard!A:J"
+      },
+      "name": "Save to Dashboard Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [1200, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "GOOGLE_SHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toEmail": "={{$json[\"clientEmail\"]}}",
+        "subject": "Your Investor Risk Profile & Allocation Guidance",
+        "html": "<h2>Investor Risk Profile</h2>\n<p><strong>Risk Category:</strong> {{$json[\"riskProfile\"]}}</p>\n<p><strong>Risk Score:</strong> {{$json[\"riskScore\"]}}</p>\n<h3>Recommended Allocation</h3>\n<ul>\n<li>Equity: {{$json[\"equity\"]}}%</li>\n<li>Debt: {{$json[\"debt\"]}}%</li>\n<li>Gold: {{$json[\"gold\"]}}%</li>\n</ul>\n<p>Expected Annual Return (Model Assumption): {{$json[\"expectedReturn\"]}}</p>\n<p>Projected Growth Multiplier ({{$json[\"submissionMonth\"]}} base): {{$json[\"projectionMultiplier\"]}}</p>\n<p><em>This is an educational allocation guidance model. Returns are not guaranteed.</em></p>"
+      },
+      "name": "Send Email to Client",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1450, 200],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "toEmail": "ADMIN_EMAIL",
+        "subject": "New Investor Categorized - {{$json[\"riskProfile\"]}}",
+        "text": "New investor processed.\n\nName: {{$json[\"clientName\"]}}\nRisk Profile: {{$json[\"riskProfile\"]}}\nRisk Score: {{$json[\"riskScore\"]}}\nExpected Return: {{$json[\"expectedReturn\"]}}\nProjection Multiplier: {{$json[\"projectionMultiplier\"]}}\nMonth: {{$json[\"submissionMonth\"]}}"
+      },
+      "name": "Notify Admin",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [1450, 400],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "GMAIL_CREDENTIAL_ID",
+          "name": "Gmail Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Google Sheets Trigger": {
+      "main": [[{ "node": "Map Fields", "type": "main", "index": 0 }]]
+    },
+    "Map Fields": {
+      "main": [[{ "node": "Risk Scoring", "type": "main", "index": 0 }]]
+    },
+    "Risk Scoring": {
+      "main": [[{ "node": "Allocation + Dashboard Formatter", "type": "main", "index": 0 }]]
+    },
+    "Allocation + Dashboard Formatter": {
+      "main": [[{ "node": "Save to Dashboard Sheet", "type": "main", "index": 0 }]]
+    },
+    "Save to Dashboard Sheet": {
+      "main": [[
+        { "node": "Send Email to Client", "type": "main", "index": 0 },
+        { "node": "Notify Admin", "type": "main", "index": 0 }
+      ]]
+    }
+  }
+}

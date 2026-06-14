@@ -1,0 +1,466 @@
+{
+  "name": "AHAM Master Workflow — All Flows",
+  "nodes": [
+
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "* * * * *" }]
+        }
+      },
+      "name": "Master Trigger (Every Minute)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [-1400, 300],
+      "id": "master-001"
+    },
+
+    {
+      "parameters": {
+        "functionCode": "// ── ORCHESTRATION ROUTER ─────────────────────────────────────\n// Runs every minute. Decides which flows to activate.\n\nconst now       = new Date();\nconst day       = now.getDay();    // 0=Sun, 1=Mon\nconst date      = now.getDate();   // 1-31\nconst hour      = now.getHours();\nconst minute    = now.getMinutes();\n\n// FLOW 1 — Onboarding: always check for new sheet rows\nconst runOnboarding = true;\n\n// FLOW 2 — Weekly Pulse: Monday at 08:00 only\nconst runWeeklyPulse = (day === 1 && hour === 8 && minute === 0);\n\n// FLOW 3 — Reassessment: 1st of month at 09:00 only\nconst runReassessment = (date === 1 && hour === 9 && minute === 0);\n\nreturn [{\n  json: {\n    runOnboarding,\n    runWeeklyPulse,\n    runReassessment,\n    timestamp: now.toISOString()\n  }\n}];"
+      },
+      "name": "Orchestration Router",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-1160, 300],
+      "id": "master-002"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.runOnboarding}}", "value2": true }]
+        }
+      },
+      "name": "Gate — Onboarding?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-920, 160],
+      "id": "master-003"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.runWeeklyPulse}}", "value2": true }]
+        }
+      },
+      "name": "Gate — Weekly Pulse?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-920, 320],
+      "id": "master-004"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.runReassessment}}", "value2": true }]
+        }
+      },
+      "name": "Gate — Reassessment?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-920, 480],
+      "id": "master-005"
+    },
+
+    {
+      "parameters": {
+        "operation": "readAllRows",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "AHAM_Leads",
+          "cachedResultName": "AHAM_Leads"
+        },
+        "options": {}
+      },
+      "name": "Read All Sheet Rows",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-640, 60],
+      "id": "master-006",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_OAUTH_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "functionCode": "// ── FLOW 1: AHAM Scoring + Email Builder ─────────────────────\n// Filters only unprocessed rows, scores each, builds email HTML\n\nconst PROFILES = {\n  Conservative: {\n    cagrLabel: '10–12%', cagrMid: 0.11, volatility: 'Low',\n    color: '#0d9488', description: 'capital preservation with steady income',\n    assets: [\n      { name: 'NIFTY 50',        pct: 30, type: 'Domestic Equity', color: '#b8860b' },\n      { name: 'Corporate Bonds', pct: 33, type: 'Fixed Income',    color: '#0d9488' },\n      { name: 'Gold BEES ETF',   pct: 15, type: 'Gold Hedge',      color: '#d97706' },\n      { name: 'NIFTY Realty',    pct:  5, type: 'Sectoral',        color: '#7c3aed' },\n      { name: 'NIFTY Smallcap',  pct:  7, type: 'Domestic Equity', color: '#ea580c' },\n      { name: 'NASDAQ-100 ETF',  pct: 10, type: 'Global Equity',   color: '#2563eb' }\n    ]\n  },\n  Moderate: {\n    cagrLabel: '12–18%', cagrMid: 0.15, volatility: 'Moderate',\n    color: '#b8860b', description: 'balanced growth with managed risk',\n    assets: [\n      { name: 'NIFTY 50',        pct: 40, type: 'Domestic Equity', color: '#b8860b' },\n      { name: 'Corporate Bonds', pct: 20, type: 'Fixed Income',    color: '#0d9488' },\n      { name: 'Gold BEES ETF',   pct:  8, type: 'Gold Hedge',      color: '#d97706' },\n      { name: 'NIFTY Realty',    pct:  7, type: 'Sectoral',        color: '#7c3aed' },\n      { name: 'NIFTY Smallcap',  pct: 15, type: 'Domestic Equity', color: '#ea580c' },\n      { name: 'NASDAQ-100 ETF',  pct: 10, type: 'Global Equity',   color: '#2563eb' }\n    ]\n  },\n  Aggressive: {\n    cagrLabel: '19–25%', cagrMid: 0.22, volatility: 'High',\n    color: '#dc2626', description: 'maximum long-term wealth creation',\n    assets: [\n      { name: 'NIFTY 50',        pct: 35, type: 'Domestic Equity', color: '#b8860b' },\n      { name: 'Corporate Bonds', pct: 10, type: 'Fixed Income',    color: '#0d9488' },\n      { name: 'Gold BEES ETF',   pct:  5, type: 'Gold Hedge',      color: '#d97706' },\n      { name: 'NIFTY Realty',    pct: 12, type: 'Sectoral',        color: '#7c3aed' },\n      { name: 'NIFTY Smallcap',  pct: 20, type: 'Domestic Equity', color: '#ea580c' },\n      { name: 'NASDAQ-100 ETF',  pct: 18, type: 'Global Equity',   color: '#2563eb' }\n    ]\n  }\n};\n\nfunction scoreVal(v) {\n  if (!v) return 2;\n  v = v.toString().toLowerCase().trim();\n  if (v === 'low')    return 1;\n  if (v === 'medium') return 2;\n  return 3;\n}\n\nfunction fmtINR(n) {\n  if (!n || isNaN(n)) return '₹0';\n  if (n >= 10000000) return '₹' + (n/10000000).toFixed(2) + ' Cr';\n  if (n >= 100000)   return '₹' + (n/100000).toFixed(2)   + ' L';\n  return '₹' + Math.round(n).toLocaleString('en-IN');\n}\n\nconst results = [];\n\nfor (const item of items) {\n  const d = item.json;\n\n  // Skip already processed rows\n  if (!d['Email']) continue;\n  if ((d['Processed'] || '').toString().toUpperCase() === 'TRUE') continue;\n\n  const total =\n    scoreVal(d['Horizon'])    +\n    scoreVal(d['Income'])     +\n    scoreVal(d['Wealth'])     +\n    scoreVal(d['Reaction'])   +\n    scoreVal(d['Experience']) +\n    scoreVal(d['Goal'])       +\n    scoreVal(d['Returns']);\n\n  let profile = 'Moderate';\n  if (total <= 11) profile = 'Conservative';\n  else if (total >= 17) profile = 'Aggressive';\n\n  const p      = PROFILES[profile];\n  const invest = parseFloat(d['Investment']) || 100000;\n  const years  = parseInt(d['Target Years']) || 10;\n\n  const projMed = invest * Math.pow(1 + p.cagrMid, years);\n  const projBst = projMed * 1.45;\n  const projWst = projMed * 0.62;\n\n  // QuickChart donut\n  const chartConfig = {\n    type: 'doughnut',\n    data: {\n      labels: p.assets.map(a => a.name + ' ' + a.pct + '%'),\n      datasets: [{\n        data: p.assets.map(a => a.pct),\n        backgroundColor: p.assets.map(a => a.color),\n        borderWidth: 2, borderColor: '#1a1f2e'\n      }]\n    },\n    options: {\n      plugins: {\n        legend: { position: 'right', labels: { color: '#f0ede8', font: { size: 11 }, padding: 12 } },\n        title:  { display: true, text: profile + ' Portfolio · AHAM', color: '#b8860b', font: { size: 13 } }\n      },\n      cutout: '62%'\n    }\n  };\n  const chartUrl = 'https://quickchart.io/chart?backgroundColor=%231a1f2e&width=520&height=300&c='\n    + encodeURIComponent(JSON.stringify(chartConfig));\n\n  // Score gauge bar\n  const scorePct = Math.round(((total - 7) / 14) * 100);\n  const scoreGauge = `<div style=\"background:#212736;border-radius:99px;height:8px;overflow:hidden;margin:10px 0 6px;\"><div style=\"height:100%;width:${scorePct}%;background:linear-gradient(90deg,#0d9488,${p.color});border-radius:99px;\"></div></div><div style=\"display:flex;justify-content:space-between;font-size:10px;color:#5a6480;\"><span>Conservative</span><span>Moderate</span><span>Aggressive</span></div>`;\n\n  // Asset table rows\n  const assetRows = p.assets.map(a =>\n    `<tr><td style=\"padding:10px 16px;border-bottom:1px solid #2a3144;\"><div style=\"display:flex;align-items:center;gap:8px;\"><div style=\"width:8px;height:8px;border-radius:50%;background:${a.color};flex-shrink:0;\"></div><span style=\"color:#f0ede8;font-size:13px;\">${a.name}</span></div></td><td style=\"padding:10px 16px;border-bottom:1px solid #2a3144;\"><span style=\"background:#181c29;border:1px solid #2a3144;border-radius:4px;padding:2px 8px;font-size:11px;color:#5a6480;\">${a.type}</span></td><td style=\"padding:10px 16px;border-bottom:1px solid #2a3144;text-align:right;\"><span style=\"font-family:monospace;font-size:14px;color:${a.color};font-weight:600;\">${a.pct}%</span></td></tr>`\n  ).join('');\n\n  const submitDate = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });\n\n  results.push({\n    json: {\n      flowType: 'onboarding',\n      name: d['Name'], email: d['Email'],\n      riskScore: total, riskProfile: profile,\n      profileColor: p.color, description: p.description,\n      cagrLabel: p.cagrLabel, volatility: p.volatility,\n      invest, years,\n      projMed: fmtINR(projMed),\n      projBst: fmtINR(projBst),\n      projWst: fmtINR(projWst),\n      investFmt: fmtINR(invest),\n      chartUrl, assetRows, scoreGauge, submitDate\n    }\n  });\n}\n\nif (results.length === 0) return [{ json: { flowType: 'onboarding', skip: true } }];\nreturn results;"
+      },
+      "name": "Flow 1 — Score + Build Email",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-360, 60],
+      "id": "master-007"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.skip}}", "value2": true }]
+        }
+      },
+      "name": "Skip if No New Rows",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-100, 60],
+      "id": "master-008"
+    },
+
+    {
+      "parameters": {
+        "sendTo": "={{$json.email}}",
+        "subject": "Your AHAM Portfolio Report — {{$json.riskProfile}} Profile",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html><html><head><meta charset='UTF-8'/><meta name='viewport' content='width=device-width,initial-scale=1.0'/></head><body style='margin:0;padding:0;background:#0f1117;font-family:Georgia,serif;'><table width='100%' cellpadding='0' cellspacing='0' style='background:#0f1117;padding:32px 16px;'><tr><td align='center'><table width='600' cellpadding='0' cellspacing='0' style='max-width:600px;width:100%;'><tr><td style='background:linear-gradient(135deg,#1a1f2e,#141825);border:1px solid #2a3144;border-radius:16px 16px 0 0;padding:36px 40px;text-align:center;'><div style='display:inline-block;border:1.5px solid #b8860b;border-radius:8px;padding:6px 10px;margin-bottom:16px;'><span style='color:#b8860b;font-size:16px;'>&#9650;</span></div><div style='font-family:Georgia,serif;font-size:18px;color:#b8860b;letter-spacing:.08em;margin-bottom:4px;'>AHAM Portfolio Report</div><div style='font-size:11px;color:#5a6480;letter-spacing:.12em;text-transform:uppercase;margin-bottom:24px;'>Adaptive Hybrid Asset Allocation Model</div><div style='display:inline-block;background:{{$json.profileColor}}22;border:1px solid {{$json.profileColor}}55;border-radius:99px;padding:6px 20px;margin-bottom:20px;'><span style='font-size:11px;color:{{$json.profileColor}};letter-spacing:.1em;text-transform:uppercase;font-family:monospace;'>✦ Personalised Report — {{$json.submitDate}}</span></div><h1 style='margin:0 0 8px;font-size:26px;color:#f0ede8;font-weight:600;'>Hello, {{$json.name}}</h1></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:28px 40px;'><table width='100%' cellpadding='0' cellspacing='0'><tr><td width='48%' style='padding-right:12px;'><div style='background:{{$json.profileColor}}12;border:1px solid {{$json.profileColor}}44;border-radius:14px;padding:22px;text-align:center;'><div style='font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;font-family:monospace;'>Risk Classification</div><div style='font-size:32px;font-weight:700;color:{{$json.profileColor}};font-family:Georgia,serif;'>{{$json.riskProfile}}</div><div style='font-size:12px;color:#5a6480;margin-top:4px;'>{{$json.description}}</div></div></td><td width='52%' style='padding-left:12px;vertical-align:top;'><div style='background:#181c29;border:1px solid #2a3144;border-radius:14px;padding:22px;'><div style='font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px;font-family:monospace;'>Risk Score</div><div style='font-family:monospace;font-size:28px;color:{{$json.profileColor}};'>{{$json.riskScore}}<span style='font-size:14px;color:#2a3144;'> / 21</span></div>{{$json.scoreGauge}}</div></td></tr></table></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 28px;text-align:center;'><div style='font-size:11px;color:#5a6480;letter-spacing:.12em;text-transform:uppercase;margin-bottom:16px;font-family:monospace;'>AHAM · 6-Asset Allocation</div><img src='{{$json.chartUrl}}' width='500' style='max-width:100%;border-radius:12px;border:1px solid #2a3144;display:block;margin:0 auto;' alt='Portfolio Allocation'/></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 28px;'><table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #2a3144;border-radius:12px;overflow:hidden;border-collapse:separate;'><thead><tr style='background:#181c29;'><th style='padding:12px 16px;text-align:left;font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;font-weight:500;border-bottom:1px solid #2a3144;'>Asset Class</th><th style='padding:12px 16px;text-align:left;font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;font-weight:500;border-bottom:1px solid #2a3144;'>Type</th><th style='padding:12px 16px;text-align:right;font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;font-weight:500;border-bottom:1px solid #2a3144;'>Allocation</th></tr></thead><tbody style='background:#1a1f2e;'>{{$json.assetRows}}</tbody></table></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 28px;'><table width='100%' cellpadding='0' cellspacing='0'><tr><td width='33%' style='padding-right:8px;'><div style='background:#181c29;border:1px solid #2a3144;border-radius:10px;padding:16px;text-align:center;'><div style='font-family:monospace;font-size:17px;color:#b8860b;'>{{$json.cagrLabel}}</div><div style='font-size:10px;color:#5a6480;margin-top:4px;text-transform:uppercase;letter-spacing:.08em;'>Target CAGR</div></div></td><td width='33%' style='padding:0 4px;'><div style='background:#181c29;border:1px solid #2a3144;border-radius:10px;padding:16px;text-align:center;'><div style='font-family:monospace;font-size:17px;color:#b8860b;'>{{$json.volatility}}</div><div style='font-size:10px;color:#5a6480;margin-top:4px;text-transform:uppercase;letter-spacing:.08em;'>Volatility</div></div></td><td width='33%' style='padding-left:8px;'><div style='background:#181c29;border:1px solid #2a3144;border-radius:10px;padding:16px;text-align:center;'><div style='font-family:monospace;font-size:17px;color:#b8860b;'>{{$json.years}}Y</div><div style='font-size:10px;color:#5a6480;margin-top:4px;text-transform:uppercase;letter-spacing:.08em;'>Horizon</div></div></td></tr></table></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 28px;'><div style='background:linear-gradient(135deg,rgba(184,134,11,.07),rgba(13,148,136,.04));border:1px solid rgba(184,134,11,.18);border-radius:14px;padding:24px;text-align:center;'><div style='font-size:11px;color:#5a6480;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px;font-family:monospace;'>Monte Carlo · {{$json.years}}-Year INR Projection</div><div style='font-size:12px;color:#2a3144;margin-bottom:20px;'>Initial: {{$json.investFmt}} · Based on {{$json.cagrLabel}} CAGR</div><table width='100%' cellpadding='0' cellspacing='0'><tr><td style='text-align:center;padding:0 8px;'><div style='font-family:monospace;font-size:14px;color:#dc2626;'>{{$json.projWst}}</div><div style='font-size:10px;color:#5a6480;margin-top:4px;'>Worst (5th %ile)</div></td><td style='text-align:center;padding:0 8px;border-left:1px solid #2a3144;border-right:1px solid #2a3144;'><div style='font-family:monospace;font-size:24px;color:#b8860b;font-weight:600;'>{{$json.projMed}}</div><div style='font-size:10px;color:#5a6480;margin-top:4px;'>Median Outcome</div></td><td style='text-align:center;padding:0 8px;'><div style='font-family:monospace;font-size:14px;color:#0d9488;'>{{$json.projBst}}</div><div style='font-size:10px;color:#5a6480;margin-top:4px;'>Best (95th %ile)</div></td></tr></table></div></td></tr><tr><td style='background:#0f1117;border:1px solid #2a3144;border-radius:0 0 16px 16px;padding:24px 40px;'><p style='font-size:11px;color:#2a3144;line-height:1.8;margin:0 0 20px;'>This report is generated by the AHAM framework for informational purposes only and does not constitute financial advice. Past performance does not guarantee future returns. All projections are in INR. Please consult a SEBI-Registered Investment Adviser before making investment decisions.</p><table width='100%' cellpadding='0' cellspacing='0'><tr><td><div style='font-family:Georgia,serif;font-size:14px;color:#b8860b;'>Karthikeyan K.</div><div style='font-size:11px;color:#5a6480;margin-top:2px;'>Financial Systems &amp; Business Automation</div></td><td style='text-align:right;'><div style='font-size:11px;color:#2a3144;'>AHAM v2.0 · SEBI-Compliant</div><div style='font-size:11px;color:#2a3144;margin-top:2px;'>{{$json.submitDate}}</div></td></tr></table></td></tr></table></td></tr></table></body></html>",
+        "options": {}
+      },
+      "name": "Flow 1 — Send Onboarding Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [160, -40],
+      "id": "master-009",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_OAUTH_CREDENTIAL_ID",
+          "name": "Gmail OAuth"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "AHAM_Leads",
+          "cachedResultName": "AHAM_Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": { "Processed": "TRUE" }
+        },
+        "where": {
+          "values": [{ "lookupColumn": "Email", "lookupValue": "={{$json.email}}" }]
+        },
+        "options": {}
+      },
+      "name": "Flow 1 — Mark Processed",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [160, 120],
+      "id": "master-010",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_OAUTH_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "url": "https://query1.finance.yahoo.com/v8/finance/chart/%5ENII",
+        "options": { "timeout": 10000 }
+      },
+      "name": "Flow 2 — Fetch NIFTY",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [-640, 320],
+      "id": "master-011"
+    },
+
+    {
+      "parameters": {
+        "url": "https://query1.finance.yahoo.com/v8/finance/chart/GC%3DF",
+        "options": { "timeout": 10000 }
+      },
+      "name": "Flow 2 — Fetch Gold",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [-640, 460],
+      "id": "master-012"
+    },
+
+    {
+      "parameters": {
+        "url": "https://query1.finance.yahoo.com/v8/finance/chart/%5EIXIC",
+        "options": { "timeout": 10000 }
+      },
+      "name": "Flow 2 — Fetch NASDAQ",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [-640, 600],
+      "id": "master-013"
+    },
+
+    {
+      "parameters": {
+        "mode": "mergeByIndex"
+      },
+      "name": "Flow 2 — Merge Market Data",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [-360, 460],
+      "id": "master-014"
+    },
+
+    {
+      "parameters": {
+        "functionCode": "// ── FLOW 2: Parse market data + build personalised pulses ────\n\nfunction getPrice(data) {\n  if (!data) return null;\n  const closes = data?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;\n  if (!closes) return null;\n  const valid = closes.filter(p => p !== null && p !== undefined);\n  return { current: valid[valid.length-1], prev: valid[valid.length-6] || valid[0] };\n}\n\nfunction calcChange(c, p) {\n  if (!c || !p) return { pct:'0.00', color:'#b8860b', arrow:'→', sign:'' };\n  const pct = ((c - p) / p) * 100;\n  return {\n    pct:   Math.abs(pct).toFixed(2),\n    color: pct > 0.5 ? '#0d9488' : pct < -0.5 ? '#dc2626' : '#b8860b',\n    arrow: pct > 0.5 ? '↑' : pct < -0.5 ? '↓' : '→',\n    sign:  pct > 0 ? '+' : pct < 0 ? '-' : ''\n  };\n}\n\nfunction fmtINR(n) {\n  if (!n) return 'N/A';\n  return '₹' + Math.round(n).toLocaleString('en-IN');\n}\n\nconst nifty  = getPrice(items[0]?.json);\nconst gold   = getPrice(items[1]?.json);\nconst nasdaq = getPrice(items[2]?.json);\n\nconst nC = calcChange(nifty?.current,  nifty?.prev);\nconst gC = calcChange(gold?.current,   gold?.prev);\nconst nqC= calcChange(nasdaq?.current, nasdaq?.prev);\n\n// Convert gold & NASDAQ to INR approx (1 USD ~ 83 INR)\nconst USD_INR = 83;\n\nconst weekDate = new Date().toLocaleDateString('en-IN', {\n  day:'numeric', month:'long', year:'numeric'\n});\n\nconst commentary = {\n  Conservative: {\n    up:   'Your equity allocation (30%) is benefiting from this week\\'s rally. Your bond and gold holdings remain stable.',\n    down: 'Your defensive allocation — 33% bonds + 15% gold — is cushioning the market dip effectively.',\n    flat: 'Markets are consolidating. Your conservative mix is well-positioned for stability.'\n  },\n  Moderate: {\n    up:   'Your 40% NIFTY allocation is working in your favour this week. Smallcap (15%) also trending positive.',\n    down: 'A dip week for equity. Your 20% bond allocation is providing a meaningful buffer.',\n    flat: 'Quiet week. Your diversified AHAM allocation is balanced for the next market move.'\n  },\n  Aggressive: {\n    up:   'Strong week — your 35% NIFTY + 20% Smallcap + 18% NASDAQ exposure is all performing positively.',\n    down: 'Volatility this week. Short-term fluctuations are normal for your aggressive profile — stay the course.',\n    flat: 'Markets pausing. Your high-equity positioning is set for the next momentum move.'\n  }\n};\n\nconst niftyDir = parseFloat(nC.pct) > 0.5 && nC.arrow==='↑' ? 'up'\n               : parseFloat(nC.pct) > 0.5 && nC.arrow==='↓' ? 'down' : 'flat';\n\nreturn [{\n  json: {\n    flowType: 'weeklyPulse',\n    weekDate,\n    niftyPrice:  fmtINR(nifty?.current),\n    niftyChange: nC,\n    goldPrice:   fmtINR((gold?.current || 0) * USD_INR),\n    goldChange:  gC,\n    nasdaqPrice: fmtINR((nasdaq?.current || 0) * USD_INR),\n    nasdaqChange:nqC,\n    niftyDir,\n    commentary\n  }\n}];"
+      },
+      "name": "Flow 2 — Parse Market Data",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-100, 460],
+      "id": "master-015"
+    },
+
+    {
+      "parameters": {
+        "operation": "readAllRows",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "AHAM_Leads",
+          "cachedResultName": "AHAM_Leads"
+        },
+        "options": {}
+      },
+      "name": "Flow 2 — Get All Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-100, 620],
+      "id": "master-016",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_OAUTH_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth"
+        }
+      }
+    },
+
+    {
+      "parameters": { "mode": "combine", "combinationMode": "multiplex" },
+      "name": "Flow 2 — Pair Market + Clients",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2,
+      "position": [160, 540],
+      "id": "master-017"
+    },
+
+    {
+      "parameters": {
+        "functionCode": "// ── Build personalised weekly pulse per client ───────────────\nconst results = [];\n\nfor (const item of items) {\n  const d        = item.json;\n  const email    = d['Email']        || '';\n  const name     = d['Name']         || 'Investor';\n  const profile  = d['Risk Profile'] || 'Moderate';\n  if (!email) continue;\n\n  const commentary = d.commentary || {};\n  const niftyDir   = d.niftyDir   || 'flat';\n  const comment    = (commentary[profile] || {})[niftyDir] || '';\n\n  const needsAlert = parseFloat(d.niftyChange?.pct || 0) > 8;\n  const alertBlock = needsAlert\n    ? `<tr><td style=\"padding:0 40px 20px;\"><div style=\"background:rgba(220,38,38,.08);border:1px solid rgba(220,38,38,.3);border-radius:12px;padding:16px 20px;\"><div style=\"font-size:12px;color:#dc2626;font-weight:600;margin-bottom:6px;\">⚠ Rebalancing Check Recommended</div><div style=\"font-size:13px;color:#5a6480;line-height:1.7;\">NIFTY has moved significantly. Consider reviewing your ${profile} allocation.</div></div></td></tr>`\n    : '';\n\n  results.push({\n    json: {\n      flowType: 'weeklyPulse',\n      name, email, profile, comment, alertBlock,\n      weekDate:     d.weekDate,\n      niftyPrice:   d.niftyPrice,\n      niftyChange:  d.niftyChange,\n      goldPrice:    d.goldPrice,\n      goldChange:   d.goldChange,\n      nasdaqPrice:  d.nasdaqPrice,\n      nasdaqChange: d.nasdaqChange\n    }\n  });\n}\n\nreturn results.length ? results : [{ json: { flowType: 'weeklyPulse', skip: true } }];"
+      },
+      "name": "Flow 2 — Personalise Per Client",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [400, 540],
+      "id": "master-018"
+    },
+
+    {
+      "parameters": {
+        "sendTo": "={{$json.email}}",
+        "subject": "Your Weekly Market Pulse (INR) — w/e {{$json.weekDate}} · AHAM",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html><html><head><meta charset='UTF-8'/></head><body style='margin:0;padding:0;background:#0f1117;font-family:Georgia,serif;'><table width='100%' cellpadding='0' cellspacing='0' style='background:#0f1117;padding:32px 16px;'><tr><td align='center'><table width='600' cellpadding='0' cellspacing='0' style='max-width:600px;width:100%;'><tr><td style='background:linear-gradient(135deg,#1a1f2e,#141825);border:1px solid #2a3144;border-radius:16px 16px 0 0;padding:32px 40px;text-align:center;'><div style='font-size:11px;color:#5a6480;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;font-family:monospace;'>Weekly Market Pulse · All Values in INR</div><h1 style='margin:0 0 6px;font-size:22px;color:#f0ede8;font-family:Georgia,serif;'>Good morning, {{$json.name}}</h1><p style='margin:0;font-size:13px;color:#5a6480;'>Week ending {{$json.weekDate}} · {{$json.profile}} Profile</p></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 24px;padding-top:24px;'><table width='100%' cellpadding='0' cellspacing='0' style='border:1px solid #2a3144;border-radius:12px;overflow:hidden;border-collapse:separate;'><thead><tr style='background:#181c29;'><th style='padding:12px 16px;text-align:left;font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #2a3144;'>Index</th><th style='padding:12px 16px;text-align:right;font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #2a3144;'>Price (INR)</th><th style='padding:12px 16px;text-align:right;font-size:11px;color:#5a6480;letter-spacing:.1em;text-transform:uppercase;border-bottom:1px solid #2a3144;'>Week</th></tr></thead><tbody style='background:#1a1f2e;'><tr><td style='padding:14px 16px;border-bottom:1px solid #2a3144;'><div style='display:flex;align-items:center;gap:8px;'><div style='width:8px;height:8px;border-radius:50%;background:#b8860b;'></div><span style='color:#f0ede8;font-size:13px;'>NIFTY 50</span></div></td><td style='padding:14px 16px;text-align:right;border-bottom:1px solid #2a3144;font-family:monospace;font-size:13px;color:#f0ede8;'>{{$json.niftyPrice}}</td><td style='padding:14px 16px;text-align:right;border-bottom:1px solid #2a3144;font-family:monospace;font-size:14px;font-weight:600;color:{{$json.niftyChange.color}};'>{{$json.niftyChange.arrow}} {{$json.niftyChange.sign}}{{$json.niftyChange.pct}}%</td></tr><tr><td style='padding:14px 16px;border-bottom:1px solid #2a3144;'><div style='display:flex;align-items:center;gap:8px;'><div style='width:8px;height:8px;border-radius:50%;background:#d97706;'></div><span style='color:#f0ede8;font-size:13px;'>Gold (INR/oz)</span></div></td><td style='padding:14px 16px;text-align:right;border-bottom:1px solid #2a3144;font-family:monospace;font-size:13px;color:#f0ede8;'>{{$json.goldPrice}}</td><td style='padding:14px 16px;text-align:right;border-bottom:1px solid #2a3144;font-family:monospace;font-size:14px;font-weight:600;color:{{$json.goldChange.color}};'>{{$json.goldChange.arrow}} {{$json.goldChange.sign}}{{$json.goldChange.pct}}%</td></tr><tr><td style='padding:14px 16px;'><div style='display:flex;align-items:center;gap:8px;'><div style='width:8px;height:8px;border-radius:50%;background:#2563eb;'></div><span style='color:#f0ede8;font-size:13px;'>NASDAQ (INR)</span></div></td><td style='padding:14px 16px;text-align:right;font-family:monospace;font-size:13px;color:#f0ede8;'>{{$json.nasdaqPrice}}</td><td style='padding:14px 16px;text-align:right;font-family:monospace;font-size:14px;font-weight:600;color:{{$json.nasdaqChange.color}};'>{{$json.nasdaqChange.arrow}} {{$json.nasdaqChange.sign}}{{$json.nasdaqChange.pct}}%</td></tr></tbody></table></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 24px;'><div style='background:rgba(184,134,11,.06);border:1px solid rgba(184,134,11,.15);border-radius:12px;padding:20px 24px;'><div style='font-size:11px;color:#b8860b;text-transform:uppercase;letter-spacing:.1em;margin-bottom:10px;font-family:monospace;'>Your {{$json.profile}} Portfolio — This Week</div><div style='font-size:14px;color:#f0ede8;line-height:1.8;'>{{$json.comment}}</div></div></td></tr>{{$json.alertBlock}}<tr><td style='background:#0f1117;border:1px solid #2a3144;border-radius:0 0 16px 16px;padding:20px 40px;'><table width='100%' cellpadding='0' cellspacing='0'><tr><td><div style='font-family:Georgia,serif;font-size:13px;color:#b8860b;'>Karthikeyan K.</div><div style='font-size:11px;color:#5a6480;'>Financial Systems &amp; Business Automation</div></td><td style='text-align:right;'><div style='font-size:11px;color:#2a3144;'>AHAM v2.0 · SEBI-Compliant</div></td></tr></table></td></tr></table></td></tr></table></body></html>",
+        "options": {}
+      },
+      "name": "Flow 2 — Send Weekly Pulse",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [640, 540],
+      "id": "master-019",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_OAUTH_CREDENTIAL_ID",
+          "name": "Gmail OAuth"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "operation": "readAllRows",
+        "documentId": {
+          "__rl": true,
+          "mode": "url",
+          "value": "YOUR_GOOGLE_SHEET_URL_HERE"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "list",
+          "value": "AHAM_Leads",
+          "cachedResultName": "AHAM_Leads"
+        },
+        "options": {}
+      },
+      "name": "Flow 3 — Get All Clients",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [-640, 720],
+      "id": "master-020",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GOOGLE_OAUTH_CREDENTIAL_ID",
+          "name": "Google Sheets OAuth"
+        }
+      }
+    },
+
+    {
+      "parameters": {
+        "functionCode": "// ── FLOW 3: Filter clients due for 6-month reassessment ──────\nconst now     = new Date();\nconst results = [];\n\nfor (const item of items) {\n  const d     = item.json;\n  const email = d['Email'] || '';\n  const name  = d['Name']  || 'Investor';\n  if (!email) continue;\n\n  let submissionDate;\n  try { submissionDate = new Date(d['Timestamp']); } catch { continue; }\n  if (isNaN(submissionDate.getTime())) continue;\n\n  const monthsDiff =\n    (now.getFullYear() - submissionDate.getFullYear()) * 12 +\n    (now.getMonth() - submissionDate.getMonth());\n\n  // Fire at 6, 12, 18, 24... months\n  if (monthsDiff <= 0 || monthsDiff % 6 !== 0) continue;\n\n  const profile    = d['Risk Profile'] || 'Moderate';\n  const cagr       = d['CAGR']         || '';\n  const investment = d['Investment']   || '';\n  const projection = d['Projection']   || '';\n\n  const profileColors = { Conservative:'#0d9488', Moderate:'#b8860b', Aggressive:'#dc2626' };\n\n  const originalDate = submissionDate.toLocaleDateString('en-IN', {\n    day:'numeric', month:'long', year:'numeric'\n  });\n\n  const changesList = [\n    'Your income or employment situation',\n    'Your investment goals or target timeline',\n    'Your risk tolerance after market movements',\n    'Your overall financial obligations'\n  ].map(c => `<li style=\"padding:4px 0;color:#5a6480;font-size:13px;\">${c}</li>`).join('');\n\n  results.push({\n    json: {\n      flowType: 'reassessment',\n      name, email, profile, cagr, investment, projection,\n      originalDate, monthsDiff,\n      profileColor: profileColors[profile] || '#b8860b',\n      changesList,\n      formUrl: 'YOUR_VERCEL_FORM_URL_HERE',\n      checkDate: now.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })\n    }\n  });\n}\n\nreturn results.length ? results : [{ json: { flowType: 'reassessment', skip: true } }];"
+      },
+      "name": "Flow 3 — Filter Due Clients",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [-360, 720],
+      "id": "master-021"
+    },
+
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [{ "value1": "={{$json.skip}}", "value2": true }]
+        }
+      },
+      "name": "Flow 3 — Skip if None Due",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [-100, 720],
+      "id": "master-022"
+    },
+
+    {
+      "parameters": {
+        "sendTo": "={{$json.email}}",
+        "subject": "Time to Review Your Investment Profile — {{$json.monthsDiff}} Months On · AHAM",
+        "emailType": "html",
+        "message": "=<!DOCTYPE html><html><head><meta charset='UTF-8'/></head><body style='margin:0;padding:0;background:#0f1117;font-family:Georgia,serif;'><table width='100%' cellpadding='0' cellspacing='0' style='background:#0f1117;padding:32px 16px;'><tr><td align='center'><table width='600' cellpadding='0' cellspacing='0' style='max-width:600px;width:100%;'><tr><td style='background:linear-gradient(135deg,#1a1f2e,#141825);border:1px solid #2a3144;border-radius:16px 16px 0 0;padding:36px 40px;text-align:center;'><div style='font-size:11px;color:#5a6480;letter-spacing:.14em;text-transform:uppercase;margin-bottom:10px;font-family:monospace;'>{{$json.monthsDiff}}-Month Profile Review</div><h1 style='margin:0 0 8px;font-size:24px;color:#f0ede8;font-family:Georgia,serif;'>Hello, {{$json.name}}</h1><p style='margin:0;font-size:14px;color:#5a6480;'>It has been {{$json.monthsDiff}} months since your last assessment on {{$json.originalDate}}.</p></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:28px 40px;'><table width='100%' cellpadding='0' cellspacing='0'><tr><td width='50%' style='padding-right:8px;'><div style='background:{{$json.profileColor}}12;border:1px solid {{$json.profileColor}}44;border-radius:12px;padding:18px;text-align:center;'><div style='font-size:11px;color:#5a6480;margin-bottom:6px;font-family:monospace;text-transform:uppercase;letter-spacing:.08em;'>Original Profile</div><div style='font-size:24px;font-weight:700;color:{{$json.profileColor}};font-family:Georgia,serif;'>{{$json.profile}}</div></div></td><td width='50%' style='padding-left:8px;'><div style='background:#181c29;border:1px solid #2a3144;border-radius:12px;padding:18px;text-align:center;'><div style='font-size:11px;color:#5a6480;margin-bottom:6px;font-family:monospace;text-transform:uppercase;letter-spacing:.08em;'>CAGR Target</div><div style='font-size:24px;font-weight:700;color:#b8860b;font-family:monospace;'>{{$json.cagr}}</div></div></td></tr></table></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 24px;'><div style='background:rgba(184,134,11,.06);border:1px solid rgba(184,134,11,.15);border-radius:12px;padding:20px 24px;'><div style='font-size:13px;font-weight:600;color:#b8860b;margin-bottom:12px;'>Why review your profile now?</div><div style='font-size:13px;color:#5a6480;margin-bottom:12px;line-height:1.7;'>A lot can change in {{$json.monthsDiff}} months. Your risk profile should reflect where you are today.</div><div style='font-size:12px;color:#5a6480;margin-bottom:8px;'>Things that may have changed:</div><ul style='margin:0;padding-left:18px;'>{{$json.changesList}}</ul></div></td></tr><tr><td style='background:#1a1f2e;border-left:1px solid #2a3144;border-right:1px solid #2a3144;padding:0 40px 28px;text-align:center;'><div style='font-size:14px;color:#5a6480;margin-bottom:20px;line-height:1.7;'>It takes 3 minutes. Your updated allocation and INR projections will be sent immediately.</div><a href='{{$json.formUrl}}' style='display:inline-block;background:linear-gradient(135deg,#b8860b,#8a6200);color:#fff8e8;font-family:Georgia,serif;font-size:15px;font-weight:700;padding:14px 36px;border-radius:10px;text-decoration:none;letter-spacing:.04em;'>Retake My Profile →</a></td></tr><tr><td style='background:#0f1117;border:1px solid #2a3144;border-radius:0 0 16px 16px;padding:20px 40px;'><table width='100%' cellpadding='0' cellspacing='0'><tr><td><div style='font-family:Georgia,serif;font-size:13px;color:#b8860b;'>Karthikeyan K.</div><div style='font-size:11px;color:#5a6480;'>Financial Systems &amp; Business Automation</div></td><td style='text-align:right;'><div style='font-size:11px;color:#2a3144;'>AHAM v2.0 · SEBI-Compliant</div></td></tr></table></td></tr></table></td></tr></table></body></html>",
+        "options": {}
+      },
+      "name": "Flow 3 — Send Reassessment Email",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [160, 720],
+      "id": "master-023",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "YOUR_GMAIL_OAUTH_CREDENTIAL_ID",
+          "name": "Gmail OAuth"
+        }
+      }
+    }
+
+  ],
+
+  "connections": {
+    "Master Trigger (Every Minute)": {
+      "main": [[{ "node": "Orchestration Router", "type": "main", "index": 0 }]]
+    },
+    "Orchestration Router": {
+      "main": [[
+        { "node": "Gate — Onboarding?",    "type": "main", "index": 0 },
+        { "node": "Gate — Weekly Pulse?",  "type": "main", "index": 0 },
+        { "node": "Gate — Reassessment?",  "type": "main", "index": 0 }
+      ]]
+    },
+    "Gate — Onboarding?": {
+      "main": [
+        [{ "node": "Read All Sheet Rows", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Gate — Weekly Pulse?": {
+      "main": [
+        [
+          { "node": "Flow 2 — Fetch NIFTY",  "type": "main", "index": 0 },
+          { "node": "Flow 2 — Fetch Gold",   "type": "main", "index": 0 },
+          { "node": "Flow 2 — Fetch NASDAQ", "type": "main", "index": 0 }
+        ],
+        []
+      ]
+    },
+    "Gate — Reassessment?": {
+      "main": [
+        [{ "node": "Flow 3 — Get All Clients", "type": "main", "index": 0 }],
+        []
+      ]
+    },
+    "Read All Sheet Rows": {
+      "main": [[{ "node": "Flow 1 — Score + Build Email", "type": "main", "index": 0 }]]
+    },
+    "Flow 1 — Score + Build Email": {
+      "main": [[{ "node": "Skip if No New Rows", "type": "main", "index": 0 }]]
+    },
+    "Skip if No New Rows": {
+      "main": [
+        [],
+        [
+          { "node": "Flow 1 — Send Onboarding Email", "type": "main", "index": 0 },
+          { "node": "Flow 1 — Mark Processed",        "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Flow 2 — Fetch NIFTY":  { "main": [[{ "node": "Flow 2 — Merge Market Data", "type": "main", "index": 0 }]] },
+    "Flow 2 — Fetch Gold":   { "main": [[{ "node": "Flow 2 — Merge Market Data", "type": "main", "index": 1 }]] },
+    "Flow 2 — Fetch NASDAQ": { "main": [[{ "node": "Flow 2 — Merge Market Data", "type": "main", "index": 2 }]] },
+    "Flow 2 — Merge Market Data": {
+      "main": [[{ "node": "Flow 2 — Parse Market Data", "type": "main", "index": 0 }]]
+    },
+    "Flow 2 — Parse Market Data": {
+      "main": [[{ "node": "Flow 2 — Pair Market + Clients", "type": "main", "index": 0 }]]
+    },
+    "Flow 2 — Get All Clients": {
+      "main": [[{ "node": "Flow 2 — Pair Market + Clients", "type": "main", "index": 1 }]]
+    },
+    "Flow 2 — Pair Market + Clients": {
+      "main": [[{ "node": "Flow 2 — Personalise Per Client", "type": "main", "index": 0 }]]
+    },
+    "Flow 2 — Personalise Per Client": {
+      "main": [[{ "node": "Flow 2 — Send Weekly Pulse", "type": "main", "index": 0 }]]
+    },
+    "Flow 3 — Get All Clients": {
+      "main": [[{ "node": "Flow 3 — Filter Due Clients", "type": "main", "index": 0 }]]
+    },
+    "Flow 3 — Filter Due Clients": {
+      "main": [[{ "node": "Flow 3 — Skip if None Due", "type": "main", "index": 0 }]]
+    },
+    "Flow 3 — Skip if None Due": {
+      "main": [
+        [],
+        [{ "node": "Flow 3 — Send Reassessment Email", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+
+  "active": true,
+  "settings": { "executionOrder": "v1", "saveDataErrorExecution": "all", "saveDataSuccessExecution": "all" },
+  "id": "aham-master-workflow",
+  "tags": ["AHAM", "Master", "Karthikeyan K."]
+}
